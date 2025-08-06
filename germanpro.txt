@@ -1,0 +1,350 @@
+========================================
+📁 FILE: client/package.json
+========================================
+{
+  "name": "germanpro",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.72.0",
+    "expo": "~49.0.0",
+    "react-native-web": "~0.19.0",
+    "axios": "^1.6.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "recharts": "^2.7.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  }
+}
+
+========================================
+📁 FILE: client/App.jsx
+========================================
+import React from 'react';
+import { View, Text, StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Auth from './components/Auth';
+import Navigator from './components/Navigator';
+import { supabase } from './lib/supabase';
+
+export default function App() {
+  const [session, setSession] = React.useState(null);
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" />
+      <View style={{ flex: 1 }}>
+        {session ? <Navigator /> : <Auth />}
+      </View>
+    </SafeAreaProvider>
+  );
+}
+
+========================================
+📁 FILE: client/lib/supabase.js
+========================================
+import { createClient } from '@supabase/supabase-js';
+
+export const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+);
+
+========================================
+📁 FILE: client/components/Auth.jsx
+========================================
+import React, { useState } from 'react';
+import { View, TextInput, Button, Alert } from 'react-native';
+import { supabase } from '../lib/supabase';
+
+export default function Auth() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function signIn() {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) Alert.alert(error.message);
+    setLoading(false);
+  }
+
+  async function signUp() {
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (error) Alert.alert(error.message);
+    else Alert.alert('Check your email for confirmation!');
+    setLoading(false);
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
+      <TextInput
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
+      />
+      <TextInput
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
+      />
+      <Button title="Sign In" onPress={signIn} disabled={loading} />
+      <Button title="Sign Up" onPress={signUp} disabled={loading} />
+    </View>
+  );
+}
+
+========================================
+📁 FILE: client/components/Navigator.jsx
+========================================
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import A1Greetings from '../pages/lessons/A1Greetings';
+import TeacherDashboard from '../pages/teacher/Dashboard';
+
+const Tab = createBottomTabNavigator();
+
+export default function Navigator() {
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="Home" component={A1Greetings} />
+      <Tab.Screen name="Teacher" component={TeacherDashboard} />
+    </Tab.Navigator>
+  );
+}
+
+========================================
+📁 FILE: client/pages/lessons/A1Greetings.jsx
+========================================
+import React from 'react';
+import { View, Text, TextInput, Button } from 'react-native';
+
+export default function A1Greetings() {
+  const [answer, setAnswer] = React.useState('');
+  const [correct, setCorrect] = React.useState(false);
+
+  const check = () => {
+    if (answer.toLowerCase().trim() === 'ich heiße anna') {
+      setCorrect(true);
+    } else {
+      alert('Falsch! Versuchen Sie es nochmal.');
+    }
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Lektion: Guten Tag!</Text>
+      <Text style={{ marginVertical: 10 }}>Hallo, ich heiße Anna. Wie heißt du?</Text>
+      <Text>Übersetzen: "My name is Anna"</Text>
+      <TextInput
+        placeholder="Ich ___ Anna"
+        value={answer}
+        onChangeText={setAnswer}
+        style={{ borderWidth: 1, padding: 10, marginVertical: 10 }}
+      />
+      <Button title="Prüfen" onPress={check} />
+      {correct && <Text style={{ color: 'green', marginTop: 10 }}>✅ Sehr gut!</Text>}
+    </View>
+  );
+}
+
+========================================
+📁 FILE: client/pages/teacher/Dashboard.jsx
+========================================
+import React from 'react';
+import { View, Text, FlatList } from 'react-native';
+
+const students = [
+  { id: '1', name: 'Max Müller', level: 'A2', progress: '78%' },
+  { id: '2', name: 'Lisa Schmidt', level: 'B1', progress: '65%' },
+  { id: '3', name: 'Tom Becker', level: 'A1', progress: '90%' },
+];
+
+export default function TeacherDashboard() {
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Lehrer-Dashboard</Text>
+      <Text style={{ marginVertical: 10 }}>Willkommen! Sie haben 3 Schüler.</Text>
+      <FlatList
+        data={students}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={{ padding: 15, borderBottomWidth: 1, borderColor: '#ddd' }}>
+            <Text>{item.name} ({item.level}) — Fortschritt: {item.progress}</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+========================================
+📁 FILE: server/package.json
+========================================
+{
+  "name": "germanpro-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5"
+  }
+}
+
+========================================
+📁 FILE: server/server.js
+========================================
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+// Supabase Client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+
+app.use(cors());
+app.use(express.json());
+
+// Get A1 Lessons
+app.get('/api/lessons/a1', async (req, res) => {
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('level', 'A1')
+    .limit(3);
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+});
+
+// Get Homework
+app.get('/api/homework/:userId', async (req, res) => {
+  const { data, error } = await supabase
+    .from('homework')
+    .select('*')
+    .eq('user_id', req.params.userId);
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+
+========================================
+📁 FILE: database/schema.sql
+========================================
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE,
+  name TEXT,
+  role TEXT DEFAULT 'student',
+  current_level TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE lessons (
+  id SERIAL PRIMARY KEY,
+  title TEXT,
+  level TEXT,
+  type TEXT,
+  content JSONB,
+  audio_url TEXT
+);
+
+CREATE TABLE homework (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  lesson_id INT,
+  due_date TIMESTAMP,
+  submitted BOOLEAN DEFAULT false,
+  submitted_at TIMESTAMP
+);
+
+INSERT INTO lessons (title, level, type, content, audio_url)
+VALUES (
+  'Guten Tag',
+  'A1',
+  'vocabulary',
+  '{
+    "vocabulary": [
+      {"word": "Hallo", "meaning": "Hello"},
+      {"word": "Ich heiße", "meaning": "My name is"}
+    ]
+  }',
+  'https://example.com/audio/a1_greetings.mp3'
+);
+
+========================================
+📁 FILE: .env.example
+========================================
+# Supabase
+EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Backend
+EXPO_PUBLIC_API_URL=http://localhost:5000
+
+# Server
+SUPABASE_URL=your-supabase-url
+SUPABASE_KEY=your-service-role-key
+
+========================================
+📁 FILE: README.md
+========================================
+# 🇩🇪 GermanPro – Learn German from A1 to C1
+
+A full-stack interactive German tutor app.
+
+## 🚀 Run Locally
+
+### Client
+```bash
+cd client
+npm install
+npx expo start
